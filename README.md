@@ -99,6 +99,8 @@ Get all tasks:
 ```bash
 curl -i http://localhost:3000/tasks
 ```
+<img width="826" height="288" alt="image" src="https://github.com/user-attachments/assets/dcd17128-6121-4b55-b330-3c133f562831" />
+
 
 Example response:
 
@@ -139,19 +141,9 @@ Swagger UI provides a **Try it out** interface for testing all CRUD endpoints di
 
 ### Swagger Screenshot
 
-Add your Swagger UI screenshot here:
+<img width="1892" height="862" alt="image" src="https://github.com/user-attachments/assets/0ce7c6eb-8679-4bcb-85b3-2d1cbf023c09" />
 
-```markdown
-![Swagger UI](./swagger.png)
-```
 
-Save your screenshot as:
-
-```text
-swagger.png
-```
-
-in the root of the repository.
 
 ## Project Structure
 

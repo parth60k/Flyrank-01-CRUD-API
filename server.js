@@ -165,13 +165,14 @@ app.post("/tasks", (req, res) => {
         });
     }
 
-    const newTask = {
-        id: tasks.length + 1,
-        title: title.trim(),
-        done: false
-    };
+    const result =db.prepare(`
+        INSERT INTO tasks (title,done)
+        VALUES(?,?)
+        `).run(title.trim(),0);
 
-    tasks.push(newTask);
+    const newTask = db
+    .prepare("SELECT * FROM tasks WHERE id = ?")
+    .get(result.lastInsertRowid);
 
     res.status(201).json(newTask);
 });

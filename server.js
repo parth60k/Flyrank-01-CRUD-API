@@ -211,7 +211,9 @@ app.post("/tasks", (req, res) => {
 app.put("/tasks/:id",(req,res)=>{
     const id=Number(req.params.id);
 
-    const task=tasks.find(task=>task.id===id);
+    const task=db
+    .prepare(`SELECT * FROM tasks WHERE id = ?`)
+    .get(id);
 
     if(!task){
         return res.status(404).json({
@@ -232,7 +234,6 @@ app.put("/tasks/:id",(req,res)=>{
                 error: "Title must be a non-empty string"
             });
         }
-        task.title=title.trim();
     }
 
     if(done !== undefined){
@@ -241,10 +242,34 @@ app.put("/tasks/:id",(req,res)=>{
                 error: "Done must be a boolean"
             });
         }
-        task.done =done;
     }
 
-    res.json(task);
+    const updates =[];
+    const values = [];
+
+    if(title!==undefined){
+        updates.push("title = ?");
+        values.push(title.trim());
+    }
+
+    if(done!== undefined){
+        updates.push("done = ?");
+        values.push(done ?1 :0);
+    }
+
+    values.push(id);
+
+    db.prepare(` 
+        UPDATE tasks
+        SET ${updates.join(",")}
+        where id = ?
+    `).run(...values);
+
+    const updatedTask = db
+    .prepare("SELECT * FROM tasks WHERE id = ?")
+    .get(id);
+
+    res.json(updatedTask);
 
 });
 
@@ -268,15 +293,17 @@ app.put("/tasks/:id",(req,res)=>{
 app.delete("/tasks/:id", (req, res) => {
     const id = Number(req.params.id);
 
-    const index = tasks.findIndex(task => task.id === id);
+    const task = db
+    .prepare("SELECT * FROM tasks WHERE id = ?")
+    .get(id);
 
-    if (index === -1) {
+    if(!task){
         return res.status(404).json({
             error: "Task not found"
         });
     }
 
-    tasks.splice(index, 1);
+    db.prepare("DELETE FROM tasks WHERE id = ?").run(id);
 
     res.status(204).send();
 });

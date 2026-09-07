@@ -1,3 +1,5 @@
+require('dotenv').config();
+console.log(process.env.DB_HOST);
 const express = require("express");
 const Database = require("better-sqlite3");
 
@@ -10,6 +12,24 @@ db.prepare(`
         done BOOLEAN NOT NULL DEFAULT 0
     )
 `).run();
+
+const {Pool}=require("pg");
+
+const pool = new Pool({
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    database: process.env.DB_NAME
+});
+
+pool.query("SELECT NOW()", (err, result) => {
+    if (err) {
+        console.error("Database connection failed:", err);
+    } else {
+        console.log("Database connected:", result.rows[0]);
+    }
+});
 
 const taskCount= db.prepare("SELECT COUNT(*) AS count FROM tasks").get();
 

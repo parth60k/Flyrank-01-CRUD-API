@@ -92,6 +92,27 @@ Successfully deleting a task returns:
 204 No Content
 ```
 
+## Database
+
+This project uses SQLite because it is lightweight, requires no separate
+database server, and is sufficient for this Task API.
+
+The database is stored locally in:
+
+`tasks.db`
+
+The database and `tasks` table are automatically created when the application
+starts if they do not already exist.
+
+Three example tasks are inserted only when the table is empty.
+
+### Example SQL
+
+```sql
+SELECT * FROM tasks WHERE done = 1;
+
+
+
 ## Example curl Request
 
 Get all tasks:

@@ -1,27 +1,11 @@
 require('dotenv').config();
-console.log(process.env.DB_HOST);
+
 const express = require("express");
-const Database = require("better-sqlite3");
 
-const db= new Database("tasks.db");
+const taskRepository = require("./repositories/taskRepository");
 
-db.prepare(`
-    CREATE TABLE IF NOT EXISTS tasks (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        done BOOLEAN NOT NULL DEFAULT 0
-    )
-`).run();
 
-const {Pool}=require("pg");
-
-const pool = new Pool({
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    database: process.env.DB_NAME
-});
+const pool = require('./db');
 
 pool.query("SELECT NOW()", (err, result) => {
     if (err) {
@@ -31,18 +15,7 @@ pool.query("SELECT NOW()", (err, result) => {
     }
 });
 
-const taskCount= db.prepare("SELECT COUNT(*) AS count FROM tasks").get();
 
-if(taskCount.count===0){
-    const insert= db.prepare(`
-        INSERT INTO tasks (title,done)
-        VALUES (?,?)
-        `);
-
-        insert.run("Learn Express",0);
-        insert.run("Build CRUD API",0);
-        insert.run("Learn SQLite",0);
-}
 
 const swaggerUi=require("swagger-ui-express");
 const swaggerJsdoc = require("swagger-jsdoc");
@@ -74,23 +47,7 @@ app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use(express.json());
 
-const tasks = [
-    {
-        id: 1,
-        title: "Learn Express",
-        done: false
-    },
-    {
-        id: 2,
-        title: "Build CRUD API",
-        done: false
-    },
-    {
-        id: 3,
-        title: "Push project to GitHub",
-        done: true
-    }
-];
+
 
 /**
  * @swagger
@@ -101,10 +58,18 @@ const tasks = [
  *       200:
  *         description: List of all tasks
  */
-app.get("/tasks", (req, res) => {
-    const tasks=db.prepare("SELECT * FROM tasks").all();
+app.get("/tasks",async(req,res)=>{
+    try{
+        const tasks= await taskRepository.getAllTasks();
 
-    res.json(tasks);
+        res.json(tasks);
+    } catch(error){
+        console.error(error);
+
+        res.status(500).json({
+            error: "Internal server error"
+        });
+    }
 });
 
 app.get("/", (req, res) => {
@@ -138,20 +103,26 @@ app.get("/health", (req, res) => {
  *       404:
  *         description: Task not found
  */
-app.get("/tasks/:id",(req,res) =>{
+app.get("/tasks/:id",async(req,res) =>{
     const id=Number(req.params.id);
 
-    const task= db
-    .prepare("SELECT * FROM tasks WHERE id = ?")
-    .get(id);
+    try{
+        const task= await taskRepository.getTaskById(id);
 
-    if(!task){
-        return res.status(404).json({
-            error : "Task not found"
+        if(!task){
+            return res.status(404).json({
+                error: "Task not found"
+            });
+        }
+
+        res.json(task);
+    }catch (error){
+        console.error(error);
+
+        res.status(500).json({
+            error: "Internal server error"
         });
     }
-
-    res.json(task);
 });
 
 /**
@@ -176,25 +147,26 @@ app.get("/tasks/:id",(req,res) =>{
  *       400:
  *         description: Title is required
  */
-app.post("/tasks", (req, res) => {
-    const { title } = req.body;
+app.post("/tasks",async (req,res)=>{
+    const {title}= req.body;
 
-    if (!title || title.trim() === "") {
+    if(!title || title.trim() === ""){
         return res.status(400).json({
-            error: "Title is required"
+            error:"Title is required" 
         });
     }
 
-    const result =db.prepare(`
-        INSERT INTO tasks (title,done)
-        VALUES(?,?)
-        `).run(title.trim(),0);
+    try{
+        const newTask = await taskRepository.createTask(title.trim());
 
-    const newTask = db
-    .prepare("SELECT * FROM tasks WHERE id = ?")
-    .get(result.lastInsertRowid);
+        res.status(201).json(newTask);
+    }catch (error){
+        console.error(error);
 
-    res.status(201).json(newTask);
+        res.status(500).json({
+            error: "Internal server error"
+        });
+    }
 });
 
 
@@ -228,68 +200,52 @@ app.post("/tasks", (req, res) => {
  *       404:
  *         description: Task not found
  */
-app.put("/tasks/:id",(req,res)=>{
+app.put("/tasks/:id", async(req,res)=>{
     const id=Number(req.params.id);
 
-    const task=db
-    .prepare(`SELECT * FROM tasks WHERE id = ?`)
-    .get(id);
+   try{
+    const existingTask= await taskRepository.getTaskById(id);
 
-    if(!task){
+    if(!existingTask){
         return res.status(404).json({
             error: "Task not found"
         });
     }
+
     const {title,done} =req.body;
 
     if(title === undefined && done === undefined){
         return res.status(400).json({
-            error: "Provide title or done"
+            error:"Provide title or done"
         });
     }
 
-    if(title!== undefined){
+    if(title !== undefined){
         if(typeof title !=="string" || title.trim()===""){
             return res.status(400).json({
-                error: "Title must be a non-empty string"
+                error: "Title must be a non empty string"
             });
         }
     }
-
-    if(done !== undefined){
-        if(typeof done !== "boolean"){
+    if(done!==undefined){
+        if(typeof done !=="boolean"){
             return res.status(400).json({
-                error: "Done must be a boolean"
+                error:"Done must be a boolean"
             });
         }
     }
 
-    const updates =[];
-    const values = [];
-
-    if(title!==undefined){
-        updates.push("title = ?");
-        values.push(title.trim());
-    }
-
-    if(done!== undefined){
-        updates.push("done = ?");
-        values.push(done ?1 :0);
-    }
-
-    values.push(id);
-
-    db.prepare(` 
-        UPDATE tasks
-        SET ${updates.join(",")}
-        where id = ?
-    `).run(...values);
-
-    const updatedTask = db
-    .prepare("SELECT * FROM tasks WHERE id = ?")
-    .get(id);
+    const updatedTask= await taskRepository.updateTask(id,title!== undefined ? title.trim(): undefined, done);
 
     res.json(updatedTask);
+
+   }catch (error){
+    console.error(error);
+
+    res.status(500).json({
+        error: "Internal server error"
+    });
+   }
 
 });
 
@@ -310,22 +266,26 @@ app.put("/tasks/:id",(req,res)=>{
  *       404:
  *         description: Task not found
  */
-app.delete("/tasks/:id", (req, res) => {
-    const id = Number(req.params.id);
+app.delete("/tasks/:id",async (req,res)=>{
+    const id= Number(req.params.id);
 
-    const task = db
-    .prepare("SELECT * FROM tasks WHERE id = ?")
-    .get(id);
+    try{
+        const deletedTask= await taskRepository.deleteTask(id);
+        
+        if(!deletedTask){
+            return res.status(404).json({
+                error: "Task not found"
+            });
+        }
 
-    if(!task){
-        return res.status(404).json({
-            error: "Task not found"
+        res.status(204).send();
+    }catch (error){
+        console.error(error);
+
+        res.status(500).json({
+            error: "Internal server error"
         });
     }
-
-    db.prepare("DELETE FROM tasks WHERE id = ?").run(id);
-
-    res.status(204).send();
 });
 
 

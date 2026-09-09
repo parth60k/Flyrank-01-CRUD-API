@@ -1,0 +1,27 @@
+services:
+
+  db:
+    image: postgres:18
+    container_name: task-postgres
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      - task-postgres-data:/var/lib/postgresql
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  app:
+    build: .
+    container_name: task-api
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    depends_on:
+      - db
+
+volumes:
+  task-postgres-data:

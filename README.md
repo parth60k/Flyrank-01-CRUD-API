@@ -178,6 +178,22 @@ Flyrank-01-CRUD-API/
 └── README.md
 ```
 
+## Persistence Verification
+
+Persistence was verified using Docker Compose.
+
+1. Started the stack with:
+   `docker compose up -d`
+2. Created a new task through the API.
+3. Stopped the stack with:
+   `docker compose down`
+4. Started it again with:
+   `docker compose up -d`
+5. Called `GET /tasks`.
+6. The previously created task was still present.
+
+This confirms that PostgreSQL data persists across container restarts through the Docker volume.
+
 ## Notes
 
 This project intentionally uses an **in-memory data structure** instead of a database. Therefore, tasks are reset whenever the server restarts.

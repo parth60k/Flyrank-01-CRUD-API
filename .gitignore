@@ -3,3 +3,4 @@ node_modules/
 .cache/
 tasks.db
 tasks.db-journal
+postman/

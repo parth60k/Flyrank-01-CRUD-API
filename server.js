@@ -1,4 +1,6 @@
 require('dotenv').config();
+const supabase = require("./supabase")
+console.log("Supabase client initialized");
 
 const express = require("express");
 

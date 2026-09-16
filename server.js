@@ -19,7 +19,7 @@ pool.query("SELECT NOW()", (err, result) => {
 
 
 
-const swaggerUi=require("swagger-ui-express");
+const swaggerUi = require("swagger-ui-express");
 const swaggerJsdoc = require("swagger-jsdoc");
 
 const app = express();
@@ -60,12 +60,12 @@ app.use(express.json());
  *       200:
  *         description: List of all tasks
  */
-app.get("/tasks",async(req,res)=>{
-    try{
-        const tasks= await taskRepository.getAllTasks();
+app.get("/tasks", async (req, res) => {
+    try {
+        const tasks = await taskRepository.getAllTasks();
 
         res.json(tasks);
-    } catch(error){
+    } catch (error) {
         console.error(error);
 
         res.status(500).json({
@@ -105,20 +105,20 @@ app.get("/health", (req, res) => {
  *       404:
  *         description: Task not found
  */
-app.get("/tasks/:id",async(req,res) =>{
-    const id=Number(req.params.id);
+app.get("/tasks/:id", async (req, res) => {
+    const id = Number(req.params.id);
 
-    try{
-        const task= await taskRepository.getTaskById(id);
+    try {
+        const task = await taskRepository.getTaskById(id);
 
-        if(!task){
+        if (!task) {
             return res.status(404).json({
                 error: "Task not found"
             });
         }
 
         res.json(task);
-    }catch (error){
+    } catch (error) {
         console.error(error);
 
         res.status(500).json({
@@ -149,20 +149,20 @@ app.get("/tasks/:id",async(req,res) =>{
  *       400:
  *         description: Title is required
  */
-app.post("/tasks",async (req,res)=>{
-    const {title}= req.body;
+app.post("/tasks", async (req, res) => {
+    const { title } = req.body;
 
-    if(!title || title.trim() === ""){
+    if (!title || title.trim() === "") {
         return res.status(400).json({
-            error:"Title is required" 
+            error: "Title is required"
         });
     }
 
-    try{
+    try {
         const newTask = await taskRepository.createTask(title.trim());
 
         res.status(201).json(newTask);
-    }catch (error){
+    } catch (error) {
         console.error(error);
 
         res.status(500).json({
@@ -171,6 +171,75 @@ app.post("/tasks",async (req,res)=>{
     }
 });
 
+app.post("/auth/signup", async (req, res) => {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+        return res.status(400).json({
+            error: "Email and password are required"
+        });
+    }
+
+    try {
+        const { data, error } = await supabase.auth.signUp({
+            email,
+            password
+        });
+
+        if (error) {
+            console.error(error);
+
+            return res.status(400).json({
+                error: error.message
+            });
+        }
+        return res.status(201).json({
+            user: data.user
+        });
+    } catch (error) {
+        console.error(error);
+
+        return res.status(500).json({
+            error: "Internal server error"
+        });
+    }
+});
+
+app.post("/auth/login", async (req, res) => {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+        return res.status(400).json({
+            error: "Email and password are required"
+        });
+    }
+
+    try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password
+        });
+
+        if (error) {
+            console.error(error);
+
+            return res.status(401).json({
+                error: "Invalid login credentials"
+            });
+        }
+
+        return res.status(200).json({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token
+        });
+    } catch (error) {
+        console.error(error);
+
+        return res.status(500).json({
+            error: "Internal server error"
+        });
+    }
+});
 
 /**
  * @swagger
@@ -202,52 +271,52 @@ app.post("/tasks",async (req,res)=>{
  *       404:
  *         description: Task not found
  */
-app.put("/tasks/:id", async(req,res)=>{
-    const id=Number(req.params.id);
+app.put("/tasks/:id", async (req, res) => {
+    const id = Number(req.params.id);
 
-   try{
-    const existingTask= await taskRepository.getTaskById(id);
+    try {
+        const existingTask = await taskRepository.getTaskById(id);
 
-    if(!existingTask){
-        return res.status(404).json({
-            error: "Task not found"
-        });
-    }
-
-    const {title,done} =req.body;
-
-    if(title === undefined && done === undefined){
-        return res.status(400).json({
-            error:"Provide title or done"
-        });
-    }
-
-    if(title !== undefined){
-        if(typeof title !=="string" || title.trim()===""){
-            return res.status(400).json({
-                error: "Title must be a non empty string"
+        if (!existingTask) {
+            return res.status(404).json({
+                error: "Task not found"
             });
         }
-    }
-    if(done!==undefined){
-        if(typeof done !=="boolean"){
+
+        const { title, done } = req.body;
+
+        if (title === undefined && done === undefined) {
             return res.status(400).json({
-                error:"Done must be a boolean"
+                error: "Provide title or done"
             });
         }
+
+        if (title !== undefined) {
+            if (typeof title !== "string" || title.trim() === "") {
+                return res.status(400).json({
+                    error: "Title must be a non empty string"
+                });
+            }
+        }
+        if (done !== undefined) {
+            if (typeof done !== "boolean") {
+                return res.status(400).json({
+                    error: "Done must be a boolean"
+                });
+            }
+        }
+
+        const updatedTask = await taskRepository.updateTask(id, title !== undefined ? title.trim() : undefined, done);
+
+        res.json(updatedTask);
+
+    } catch (error) {
+        console.error(error);
+
+        res.status(500).json({
+            error: "Internal server error"
+        });
     }
-
-    const updatedTask= await taskRepository.updateTask(id,title!== undefined ? title.trim(): undefined, done);
-
-    res.json(updatedTask);
-
-   }catch (error){
-    console.error(error);
-
-    res.status(500).json({
-        error: "Internal server error"
-    });
-   }
 
 });
 
@@ -268,20 +337,20 @@ app.put("/tasks/:id", async(req,res)=>{
  *       404:
  *         description: Task not found
  */
-app.delete("/tasks/:id",async (req,res)=>{
-    const id= Number(req.params.id);
+app.delete("/tasks/:id", async (req, res) => {
+    const id = Number(req.params.id);
 
-    try{
-        const deletedTask= await taskRepository.deleteTask(id);
-        
-        if(!deletedTask){
+    try {
+        const deletedTask = await taskRepository.deleteTask(id);
+
+        if (!deletedTask) {
             return res.status(404).json({
                 error: "Task not found"
             });
         }
 
         res.status(204).send();
-    }catch (error){
+    } catch (error) {
         console.error(error);
 
         res.status(500).json({

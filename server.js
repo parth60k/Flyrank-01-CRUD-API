@@ -171,6 +171,36 @@ app.post("/tasks", async (req, res) => {
     }
 });
 
+
+app.get("/public/info", (req, res) => {
+    res.status(200).json({
+        message: "This is a public route"
+    });
+});
+
+app.get("/protected/profile", async (req, res) => {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({
+            error: "Access token required"
+        });
+    }
+
+    const token = authHeader.split(" ")[1];
+
+    if (!token) {
+        return res.status(401).json({
+            error: "Access token required"
+        });
+    }
+
+    res.status(200).json({
+        message: "Token received",
+        token
+    });
+});
+
 app.post("/auth/signup", async (req, res) => {
     const { email, password } = req.body;
 

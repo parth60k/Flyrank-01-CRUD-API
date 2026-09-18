@@ -181,24 +181,42 @@ app.get("/public/info", (req, res) => {
 app.get("/protected/profile", async (req, res) => {
     const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if(!authHeader || !authHeader.startsWith("Bearer")){
         return res.status(401).json({
             error: "Access token required"
         });
     }
 
-    const token = authHeader.split(" ")[1];
+    const token= authHeader.split(" ")[1];
 
-    if (!token) {
+    if(!token){
         return res.status(401).json({
             error: "Access token required"
         });
     }
 
-    res.status(200).json({
-        message: "Token received",
-        token
-    });
+    try{
+        const {data,error} =await supabase.auth.getUser(token);
+
+        if(error || !data.user){
+            return res.status(401).json({
+                error: "Invalid or expired token"
+            });
+        }
+
+        return res.status(200).json({
+            user: data.user
+        });
+    } catch(error){
+        console.error(error);
+
+        return res.status(500).json({
+            error: "Internal server error"
+        });
+    }
+
+
+
 });
 
 app.post("/auth/signup", async (req, res) => {

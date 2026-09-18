@@ -39,7 +39,16 @@ const swaggerOptions = {
             {
                 url: "http://localhost:3000"
             }
-        ]
+        ],
+        components : {
+            securitySchemes: {
+                bearerAuth: {
+                    type: "http",
+                    scheme: "bearer",
+                    bearerFormat: "JWT"
+                }
+            }
+        }
     },
     apis: ["./server.js"]
 };
@@ -179,59 +188,48 @@ app.get("/public/info", (req, res) => {
     });
 });
 
-
+/**
+ * @swagger
+ * /protected/profile:
+ *  get:
+ *      summary: Get authenticated user profile
+ *      security: 
+ *         - bearerAuth: []
+ *      responses:
+ *       200:
+ *          description: Authenticated user profile
+ *       401: 
+ *          description: Access token required or invalid token   
+ * 
+ * 
+ */
 app.get("/protected/profile", authMiddleware, (req, res) => {
     res.status(200).json({
         user: req.user
     });
 });
 
+
+/**
+ * @swagger
+ * /protected/dashboard:
+ *   get:
+ *     summary: Access protected dashboard
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Protected dashboard
+ *       401:
+ *         description: Access token required or invalid token
+ */
 app.get("/protected/dashboard",authMiddleware,(req,res) => {
     res.status(200).json({
         message: "Welcome to the protected dashboard",
         user: req.user
     });
 });
-// app.get("/protected/profile", async (req, res) => {
-//     const authHeader = req.headers.authorization;
 
-//     if(!authHeader || !authHeader.startsWith("Bearer")){
-//         return res.status(401).json({
-//             error: "Access token required"
-//         });
-//     }
-
-//     const token= authHeader.split(" ")[1];
-
-//     if(!token){
-//         return res.status(401).json({
-//             error: "Access token required"
-//         });
-//     }
-
-//     try{
-//         const {data,error} =await supabase.auth.getUser(token);
-
-//         if(error || !data.user){
-//             return res.status(401).json({
-//                 error: "Invalid or expired token"
-//             });
-//         }
-
-//         return res.status(200).json({
-//             user: data.user
-//         });
-//     } catch(error){
-//         console.error(error);
-
-//         return res.status(500).json({
-//             error: "Internal server error"
-//         });
-//     }
-
-
-
-// });
 
 app.post("/auth/signup", async (req, res) => {
     const { email, password } = req.body;
@@ -266,6 +264,7 @@ app.post("/auth/signup", async (req, res) => {
         });
     }
 });
+
 
 app.post("/auth/login", async (req, res) => {
     const { email, password } = req.body;
@@ -303,6 +302,20 @@ app.post("/auth/login", async (req, res) => {
     }
 });
 
+
+/**
+ * @swagger
+ * /auth/logout:
+ *   post:
+ *     summary: Logout current user
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       204:
+ *         description: Successfully logged out
+ *       401:
+ *         description: Invalid or expired token
+ */
 app.post("/auth/logout",authMiddleware,async(req,res)=>{
     const authHeader=req.headers.authorization;
 
